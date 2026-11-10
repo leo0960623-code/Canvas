@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,30 +48,43 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun CanvasScreen(modifier: Modifier = Modifier) {
-    var CanvasWidth by remember { mutableStateOf(0f) }
-    var CamvaHeight by remember { mutableStateOf(0f) }
+    var CanvasWidth by remember { mutableFloatStateOf(0f) }
+    var CamvaHeight by remember { mutableFloatStateOf(0f) }
 
-    var minionsX by remember { mutableStateOf(0f) }
-    var minionsY by remember { mutableStateOf(0f) }
+    var minionsX by remember { mutableFloatStateOf(0f) }
+    var minionsY by remember { mutableFloatStateOf(0f) }
 
-    // 遊戲狀態開關：true 為暫停/結束，false 為進行中
+    // 遊戲狀態：true 為暫停，false 為進行中
     var gameOver by remember { mutableStateOf(false) }
 
-    // 載入圖片資源 (小小兵)
+    // 載入小小兵圖片
     val minionsImage: ImageBitmap =
         ImageBitmap.imageResource(id = R.drawable.minions)
 
-    // 當 key1 (gameOver) 改變時重新評估協程
+    // 每 0.1 秒移動並檢查邊界
     LaunchedEffect(key1 = gameOver) {
         while (!gameOver) {
-            delay(100L) // 0.1 秒移動一次
-            minionsX += 5
-            minionsY += 10
+            delay(100L) // 0.1 秒
+            minionsX += 15f // 向右移動
+            minionsY += 20f // 向下移動
+
+            // 計算小小兵目前的實際繪製座標
+            if (CanvasWidth > 0f && CamvaHeight > 0f) {
+                val currentX = (CanvasWidth - minionsImage.width) / 2f + minionsX
+                val currentY = (CamvaHeight - minionsImage.height) / 2f + minionsY
+
+                // 當移出手機螢幕邊界 (超出右方或下方)
+                if (currentX >= CanvasWidth || currentY >= CamvaHeight) {
+                    // 重設回左上角 (0, 0)
+                    minionsX = -(CanvasWidth - minionsImage.width) / 2f
+                    minionsY = -(CamvaHeight - minionsImage.height) / 2f
+                }
+            }
         }
     }
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize()
     ) {
         Canvas(
             modifier = Modifier.fillMaxSize()
@@ -80,28 +94,28 @@ fun CanvasScreen(modifier: Modifier = Modifier) {
 
             // 繪製洋紅色的圓，半徑 100，圓心 (100, 100)
             drawCircle(
-                Color.Magenta,
-                100f,
-                Offset(100f, 100f)
+                color = Color.Magenta,
+                radius = 100f,
+                center = Offset(100f, 100f)
             )
 
             // 繪製藍色空心矩形，左上角 (300, 200)，寬高 200
             drawRect(
-                Color.Blue,
-                Offset(300f, 200f),
-                Size(200f, 200f),
+                color = Color.Blue,
+                topLeft = Offset(300f, 200f),
+                size = Size(200f, 200f),
                 style = Stroke(width = 5f)
             )
 
-            // 繪製紅色的線
+            // 繪製紅色的線，從 (200, 800) 到右下角
             drawLine(
-                Color.Red,
-                Offset(200f, 800f),
-                Offset(size.width, size.height),
+                color = Color.Red,
+                start = Offset(200f, 800f),
+                end = Offset(size.width, size.height),
                 strokeWidth = 10f
             )
 
-            // 取得小小兵圖片寬高並加上位移量
+            // 計算置中與位移後的位置
             val minionsWidth = minionsImage.width
             val minionsHeight = minionsImage.height
             val offsetX = (size.width - minionsWidth) / 2f + minionsX
@@ -112,7 +126,7 @@ fun CanvasScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        // 頂部控制列：顯示畫布資訊與暫停/繼續按鈕
+        // 頂部控制列
         Row(
             modifier = Modifier
                 .padding(start = 8.dp, top = 40.dp),
